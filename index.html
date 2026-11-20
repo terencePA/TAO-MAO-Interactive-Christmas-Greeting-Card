@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merry Christmas — Interactive Greeting Card</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Cinzel, Great Vibes & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pine: {
+              800: '#133326',
+              900: '#0B2118',
+              950: '#06140E',
+            },
+            cranberry: {
+              500: '#C42B2B',
+              600: '#A31D1D',
+              700: '#7D1111',
+            },
+            gold: {
+              300: '#F5DF99',
+              400: '#E2BE5B',
+              500: '#C59B27',
+            },
+            snow: '#FCFBF7'
+          },
+          fontFamily: {
+            script: ['"Great Vibes"', 'cursive'],
+            display: ['"Cinzel"', 'serif'],
+            serif: ['"Playfair Display"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: radial-gradient(circle at top, #163B2C 0%, #091B13 65%, #040D09 100%);
+      overflow-x: hidden;
+    }
+
+    /* Twinkling Tree Ornaments & Star */
+    @keyframes twinkle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    @keyframes starGlow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(245, 223, 153, 0.9)); transform: scale(1) rotate(0deg); }
+      50% { filter: drop-shadow(0 0 18px rgba(245, 223, 153, 1)); transform: scale(1.12) rotate(6deg); }
+    }
+
+    .ornament-1 { animation: twinkle 2.2s ease-in-out infinite; }
+    .ornament-2 { animation: twinkle 2.8s ease-in-out 0.6s infinite; }
+    .ornament-3 { animation: twinkle 2.5s ease-in-out 1.2s infinite; }
+    .tree-star { transform-origin: 100px 26px; animation: starGlow 3s ease-in-out infinite; }
+
+    /* Festive string light bulbs along top inner card edge */
+    @keyframes bulbGlow {
+      0%, 100% { opacity: 1; transform: scale(1.08); }
+      50% { opacity: 0.45; transform: scale(0.88); }
+    }
+
+    .string-bulb-red { animation: bulbGlow 1.9s ease-in-out infinite; }
+    .string-bulb-gold { animation: bulbGlow 2.3s ease-in-out 0.4s infinite; }
+    .string-bulb-green { animation: bulbGlow 2.1s ease-in-out 0.8s infinite; }
+    .string-bulb-ice { animation: bulbGlow 2.5s ease-in-out 1.2s infinite; }
+
+    /* Gentle Envelope / Cover Float */
+    @keyframes floatCard {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .animate-card-float {
+      animation: floatCard 5s ease-in-out infinite;
+    }
+
+    /* Card Open Transition */
+    .card-cover {
+      transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.65s ease;
+    }
+
+    .card-cover.is-open {
+      transform: translateY(-105%) scale(0.96);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .inner-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .is-opened .inner-reveal {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .delay-1 { transition-delay: 180ms; }
+    .delay-2 { transition-delay: 340ms; }
+    .delay-3 { transition-delay: 500ms; }
+
+    /* Paper grain texture for inner card */
+    .cream-paper {
+      background-color: #FCFBF7;
+      background-image: radial-gradient(rgba(197, 155, 39, 0.08) 1px, transparent 0);
+      background-size: 18px 18px;
+    }
+
+    /* Click sparkle burst */
+    .burst-particle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 60;
+      animation: burstFly 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes burstFly {
+      0% { opacity: 1; transform: translate(0, 0) scale(0.6) rotate(0deg); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(240deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 font-sans text-pine-900 relative selection:bg-gold-300">
+
+  <!-- Fullscreen Falling Snow Canvas -->
+  <canvas id="snow-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-pine-950/95 text-snow px-5 py-3 rounded-full shadow-2xl border border-gold-400/50 flex items-center gap-2 text-sm font-medium opacity-0 pointer-events-none transition-all duration-300 translate-y-4">
+    <span class="text-gold-400">✦</span>
+    <span id="toast-msg">Greeting card text copied!</span>
+  </div>
+
+  <!-- Main Card Stage -->
+  <div id="card-stage" class="relative z-10 w-full max-w-xl my-auto">
+    <div class="relative rounded-[2rem] shadow-[0_25px_70px_rgba(0,0,0,0.65)] border-2 border-gold-400/60 overflow-hidden cream-paper min-h-[540px] sm:min-h-[580px] flex flex-col justify-between">
+      
+      <!-- Inner Gold Double Border -->
+      <div class="absolute inset-2.5 sm:inset-3.5 rounded-[1.5rem] border border-gold-500/35 pointer-events-none z-20"></div>
+
+      <!-- FRONT COVER OVERLAY (Click to Open) -->
+      <div id="card-cover" class="card-cover absolute inset-0 z-30 bg-gradient-to-b from-cranberry-600 via-cranberry-700 to-pine-950 text-snow flex flex-col items-center justify-between p-7 sm:p-10 text-center cursor-pointer">
+        <div class="absolute inset-3 rounded-[1.4rem] border border-gold-300/40 pointer-events-none"></div>
+
+        <!-- Top Festive Header -->
+        <div class="pt-2">
+          <p class="text-xs uppercase tracking-[0.3em] text-gold-300 font-semibold">TAO MAO (EN DE TEMPLE)</p>
+          <div class="mt-2 h-[1px] w-24 mx-auto bg-gradient-to-r from-transparent via-gold-300 to-transparent"></div>
+        </div>
+
+        <!-- Animated SVG Christmas Tree -->
+        <div class="my-2 animate-card-float">
+          <svg class="w-44 h-48 sm:w-52 sm:h-56 mx-auto drop-shadow-xl" viewBox="0 0 200 220" fill="none">
+            <!-- Tree Trunk -->
+            <rect x="86" y="175" width="28" height="28" rx="4" fill="#5C3A21" />
+            <!-- Tree Layers -->
+            <polygon points="100,32 45,105 155,105" fill="#1E563B" />
+            <polygon points="100,68 35,145 165,145" fill="#174730" />
+            <polygon points="100,104 25,180 175,180" fill="#103824" />
+            <!-- Gold Garland Ribbons -->
+            <path d="M68 85 Q100 100 132 85" stroke="#F5DF99" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85" />
+            <path d="M52 125 Q100 145 148 125" stroke="#F5DF99" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85" />
+            <path d="M40 162 Q100 182 160 162" stroke="#F5DF99" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85" />
+            <!-- Top Star -->
+            <polygon class="tree-star" points="100,10 105,22 118,22 108,30 112,42 100,34 88,42 92,30 82,22 95,22" fill="#F5DF99" />
+            <!-- Twinkling Ornaments -->
+            <circle cx="88" cy="76" r="5" fill="#E2BE5B" class="ornament-1" />
+            <circle cx="116" cy="92" r="5.5" fill="#FF5959" class="ornament-2" />
+            <circle cx="72" cy="120" r="6" fill="#FF5959" class="ornament-3" />
+            <circle cx="104" cy="116" r="5" fill="#FFFFFF" class="ornament-1" />
+            <circle cx="132" cy="132" r="5.5" fill="#E2BE5B" class="ornament-2" />
+            <circle cx="62" cy="160" r="6" fill="#E2BE5B" class="ornament-2" />
+            <circle cx="96" cy="154" r="6.5" fill="#FF5959" class="ornament-1" />
+            <circle cx="136" cy="164" r="6" fill="#FFFFFF" class="ornament-3" />
+          </svg>
+        </div>
+
+        <!-- Cover Title & Open Button -->
+        <div class="pb-2">
+          <h1 class="font-script text-5xl sm:text-6xl text-gold-300 drop-shadow mb-2">Merry Christmas</h1>
+          <p class="font-serif text-sm sm:text-base text-snow/90 tracking-widest uppercase mb-5">Peace, Love &amp; Joy</p>
+          <button id="open-btn" type="button" class="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-gradient-to-r from-gold-400 to-gold-500 text-pine-950 font-bold text-sm tracking-wider uppercase shadow-lg hover:scale-105 active:scale-95 transition-transform cursor-pointer">
+            <span>Open Card</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- INSIDE GREETING CARD CONTENT -->
+      <div class="relative z-10 flex-1 flex flex-col justify-between p-6 sm:p-10 text-center">
+
+        <!-- Festive Christmas String Lights Banner at Top of Inner Card -->
+        <div class="inner-reveal delay-1 -mx-2 sm:-mx-4 mb-1 pointer-events-none select-none">
+          <svg class="w-full h-7" viewBox="0 0 520 36" fill="none" preserveAspectRatio="none">
+            <path d="M0 6 Q 65 26 130 6 T 260 6 T 390 6 T 520 6" stroke="#1E563B" stroke-width="2" fill="none" />
+            <circle cx="42" cy="14" r="4.5" fill="#C42B2B" class="string-bulb-red" />
+            <circle cx="86" cy="15" r="4.5" fill="#E2BE5B" class="string-bulb-gold" />
+            <circle cx="172" cy="14" r="4.5" fill="#1E563B" class="string-bulb-green" />
+            <circle cx="216" cy="15" r="4.5" fill="#F5DF99" class="string-bulb-ice" />
+            <circle cx="302" cy="14" r="4.5" fill="#C42B2B" class="string-bulb-red" />
+            <circle cx="346" cy="15" r="4.5" fill="#E2BE5B" class="string-bulb-gold" />
+            <circle cx="432" cy="14" r="4.5" fill="#1E563B" class="string-bulb-green" />
+            <circle cx="476" cy="15" r="4.5" fill="#F5DF99" class="string-bulb-ice" />
+          </svg>
+        </div>
+        
+        <!-- Top Holly & Header -->
+        <div class="inner-reveal delay-1 pt-0.5">
+          <!-- Holly Berries SVG -->
+          <svg class="w-16 h-10 mx-auto mb-1.5" viewBox="0 0 80 44" fill="none">
+            <path d="M40 24 C28 10, 12 14, 10 26 C22 26, 30 30, 40 24 Z" fill="#1E563B" />
+            <path d="M40 24 C52 10, 68 14, 70 26 C58 26, 50 30, 40 24 Z" fill="#174730" />
+            <circle cx="36" cy="26" r="4.5" fill="#C42B2B" />
+            <circle cx="44" cy="26" r="4.5" fill="#A31D1D" />
+            <circle cx="40" cy="20" r="4.5" fill="#E03C3C" />
+          </svg>
+          <p class="font-display text-xs sm:text-sm font-bold tracking-[0.22em] text-cranberry-600 uppercase">
+            ✦ TAO MAO ( EN DE TEMPLE ) ✦
+          </p>
+          <h2 class="mt-1 leading-tight">
+            <span class="block font-script text-4xl sm:text-5xl text-pine-900">Merry Christmas</span>
+            <span class="block font-script text-4xl sm:text-5xl text-cranberry-600 mt-0.5">Happy New Year</span>
+          </h2>
+        </div>
+
+        <!-- Greeting Message Box -->
+        <div class="inner-reveal delay-2 my-4 px-4 sm:px-6 py-4 rounded-2xl bg-gradient-to-br from-white/95 via-snow/95 to-gold-300/15 border border-gold-400/50 shadow-sm text-left space-y-2.5">
+          <p class="font-serif text-base sm:text-lg font-bold text-pine-900">
+            Dear <span id="display-recipient" class="text-cranberry-600 underline decoration-gold-400 underline-offset-4">Beloved Friends &amp; Family</span>,
+          </p>
+          <p id="display-message" class="font-serif text-sm sm:text-base text-pine-800 leading-relaxed">
+            May the gentle glow of holiday lights and the joy of Christmas fill your heart with peace, warmth, and blessings. Wishing you a bright, healthy, and prosperous New Year ahead!
+          </p>
+          <p class="font-serif text-sm sm:text-base font-bold text-right text-pine-900 pt-0.5">
+            — <span id="display-sender" class="text-gold-500">Warm Holiday Blessings, TAO MAO (EN DE TEMPLE)</span>
+          </p>
+        </div>
+
+        <!-- Venue Location & Contact Information Card -->
+        <div class="inner-reveal delay-2 mb-4 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-pine-950 via-pine-900 to-cranberry-700/90 text-snow border border-gold-400/60 shadow-md text-center space-y-2">
+          <p class="font-display text-xs sm:text-sm font-bold tracking-wider text-gold-300 uppercase">
+            TAO MAO (EN DE TEMPLE)
+          </p>
+          <p class="text-xs sm:text-sm text-snow/95 leading-snug">
+            LOT 7 BLK. 13 NUESTRA SENORA DE LOURDES STREET PARANAQUE
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <a href="https://maps.app.goo.gl/NiFEedS63J1R7SZ36" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 hover:bg-gold-300 text-pine-950 text-xs font-bold transition-colors">
+              <span>🗺️ Google Maps</span>
+            </a>
+            <button type="button" id="copy-venue-btn" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-snow text-xs font-semibold transition-colors cursor-pointer">
+              <span>📋 Copy Venue &amp; Tel</span>
+            </button>
+          </div>
+          <p class="text-xs text-gold-300 font-semibold pt-0.5">
+            Contact: JUVY HSU — 09175050645
+          </p>
+        </div>
+
+        <!-- Card Cover Action -->
+        <div class="inner-reveal delay-3 flex flex-wrap items-center justify-center gap-2.5 pt-1">
+          <button type="button" id="close-card-btn" class="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-white hover:bg-gold-300/30 text-pine-900 border border-pine-800/30 text-xs sm:text-sm font-semibold transition-colors cursor-pointer">
+            <span>🎄 Close Cover</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 1. Responsive Falling Snow Canvas Animation
+     */
+    const canvas = document.getElementById('snow-canvas');
+    const ctx = canvas.getContext('2d');
+    let snowflakes = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function createSnowflakes() {
+      const count = Math.min(110, Math.floor(window.innerWidth / 10));
+      snowflakes = Array.from({ length: count }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 3 + 1.2,
+        speedY: Math.random() * 1.1 + 0.4,
+        speedX: (Math.random() - 0.5) * 0.6,
+        opacity: Math.random() * 0.65 + 0.25
+      }));
+    }
+
+    function animateSnow() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const flake of snowflakes) {
+        ctx.beginPath();
+        ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${flake.opacity})`;
+        ctx.fill();
+
+        flake.y += flake.speedY;
+        flake.x += flake.speedX + Math.sin(flake.y * 0.015) * 0.3;
+
+        if (flake.y > canvas.height) {
+          flake.y = -5;
+          flake.x = Math.random() * canvas.width;
+        }
+        if (flake.x > canvas.width) flake.x = 0;
+        if (flake.x < 0) flake.x = canvas.width;
+      }
+      requestAnimationFrame(animateSnow);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      createSnowflakes();
+    });
+
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      createSnowflakes();
+      animateSnow();
+    });
+
+    /**
+     * 2. Card Open / Close & Sparkle Burst Interaction
+     */
+    const cardCover = document.getElementById('card-cover');
+    const cardStage = document.getElementById('card-stage');
+    const closeCardBtn = document.getElementById('close-card-btn');
+
+    function spawnSparkles(x, y, count = 14) {
+      const colors = ['#F5DF99', '#E2BE5B', '#FFFFFF', '#FF6B6B'];
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.className = 'burst-particle';
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+        const dist = 50 + Math.random() * 90;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        const color = colors[i % colors.length];
+        el.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}"><path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z"/></svg>`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1350);
+      }
+    }
+
+    cardCover.addEventListener('click', (e) => {
+      cardCover.classList.add('is-open');
+      cardStage.classList.add('is-opened');
+      spawnSparkles(e.clientX || window.innerWidth / 2, e.clientY || window.innerHeight / 2, 18);
+    });
+
+    closeCardBtn.addEventListener('click', () => {
+      cardCover.classList.remove('is-open');
+      cardStage.classList.remove('is-opened');
+    });
+
+    /**
+     * 3. Copy Venue Text with Iframe-Safe Clipboard Fallback
+     */
+    const copyVenueBtn = document.getElementById('copy-venue-btn');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-msg');
+    let toastTimer;
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4');
+      }, 2600);
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (err) {
+        showToast('Please select and copy the text manually.');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    copyVenueBtn.addEventListener('click', () => {
+      const venueInfo = `TAO MAO (EN DE TEMPLE)\nAddress: LOT 7 BLK. 13 NUESTRA SENORA DE LOURDES STREET PARANAQUE\nGoogle Maps: https://maps.app.goo.gl/NiFEedS63J1R7SZ36\nContact: JUVY HSU - 09175050645`;
+      copyTextToClipboard(venueInfo, 'Venue address & phone number copied!');
+    });
+  </script>
+</body>
+</html>
